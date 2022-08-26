@@ -1,0 +1,8 @@
+Package: asus-grouper-config
+Version: 0.1.0
+Section: development
+Priority: optional
+Architecture: all
+Depends: bash
+Maintainer: baonks81@gmail.com
+Description: asus-grouper-config ondemand governor and cpu temp_throttle
