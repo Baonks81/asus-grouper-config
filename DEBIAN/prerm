@@ -1,0 +1,11 @@
+#!/bin/bash
+
+systemctl stop clear_ram.service
+systemctl stop cpustart_start.service
+systemctl stop temp_throttle.service
+
+systemctl disable clear_ram.service
+systemctl disable cpustart_start.service
+systemctl disable temp_throttle.service
+
+exit 0

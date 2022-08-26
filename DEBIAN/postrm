@@ -1,0 +1,11 @@
+#!/bin/bash
+
+rm -rf /etc/systemd/system/clear_ram.service
+rm -rf /etc/systemd/system/cpufreq_start.service
+rm -rf /etc/systemd/system/temp_throttle.service
+
+rm -rf /usr/bin/clear_ram
+rm -rf /usr/bin/cpufreq.start
+rm -rf /usr/bin/temp_throttle
+
+exit 0

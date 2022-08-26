@@ -1,0 +1,15 @@
+#!/bin/bash
+
+chmod +x /usr/bin/clear_ram
+chmod +x /usr/bin/cpufreq.start
+chmod +x /usr/bin/temp_throttle
+
+systemctl enable clear_ram.service
+systemctl enable cpustart_start.service
+systemctl enable temp_throttle.service
+
+systemctl start clear_ram.service
+systemctl start cpustart_start.service
+systemctl start temp_throttle.service
+
+exit 0
