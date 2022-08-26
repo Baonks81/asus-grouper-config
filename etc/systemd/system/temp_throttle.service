@@ -1,0 +1,15 @@
+[Unit]
+Description=Temp_Throttle
+
+Wants=network.target
+After=syslog.target network-online.target
+
+[Service]
+Type=simple
+ExecStart=temp_throttle 59
+Restart=on-failure
+RestartSec=10
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
