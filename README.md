@@ -1,5 +1,5 @@
 # asus-grouper-config
-Create deb package for asus grouper/tilapia
+Create deb package for asus grouper/tilapia on GNU/Linux distros using systemd
 
 Build .deb package:
 
