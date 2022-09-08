@@ -96,7 +96,7 @@ write /proc/sys/vm/stat_interval 1
 write /proc/sys/vm/swappiness 200
 
 # Prioritize page cache over simple file structure nodes
-write /proc/sys/vm/vfs_cache_pressure 200
+write /proc/sys/vm/vfs_cache_pressure 500
 
 write /proc/sys/vm/laptop_mode 0
 
