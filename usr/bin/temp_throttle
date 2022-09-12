@@ -112,12 +112,12 @@ hotplug_allcpu () {
         echo "Found cpu: \"${CPU_DIR}\" ..."
         CPU_STATE_FILE="${CPU_DIR}/hotplug/state"
         if [ -f "${CPU_STATE_FILE}" ]; then
-                STATE=$(cat "${CPU_STATE_FILE}" | grep 231) #kernel5.14-224 kernel5.15-228 kernel5.17-231
-                if [ "${STATE}" == "231" ]; then
+                STATE=$(cat "${CPU_STATE_FILE}" | grep 237) #kernel5.14-224 kernel5.15-228 kernel5.17-231 kernel5.19-237
+                if [ "${STATE}" == "237" ]; then
                         echo -e "\t${CPU} already online"
                 else
                          echo -e "\t${CPU} is new cpu, onlining cpu ..."
-                         echo 231 > "${CPU_STATE_FILE}"
+                         echo 237 > "${CPU_STATE_FILE}"
                 fi
         else 
                 echo -e "\t${CPU} already configured prior to hot-add"
