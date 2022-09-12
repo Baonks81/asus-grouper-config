@@ -59,7 +59,7 @@ if [ -f $FREQ_FILE ]; then
 	FREQ_LIST=$(cat $FREQ_FILE | xargs -n1 | sort -g -r | xargs) || err_exit "Could not read available cpu frequencies from file $FREQ_FILE"
 elif [ -f $FREQ_MIN -a -f $FREQ_MAX ]; then
 	# Else if $FREQ_MIN and $FREQ_MAX exist, generate a list of frequencies between them.
-	FREQ_LIST=$(seq $(cat $FREQ_MAX) -200000 $(cat $FREQ_MIN)) || err_exit "Could not compute available cpu frequencies"
+	FREQ_LIST=$(seq $(cat $FREQ_MAX) -100000 $(cat $FREQ_MIN)) || err_exit "Could not compute available cpu frequencies"
 else
 	err_exit "Could not determine available cpu frequencies"
 fi
@@ -67,7 +67,7 @@ fi
 FREQ_LIST_LEN=$(echo $FREQ_LIST | wc -w)
 
 # CURRENT_FREQ will save the index of the currently used frequency in FREQ_LIST.
-CURRENT_FREQ=2
+CURRENT_FREQ=4
 
 # This is a list of possible locations to read the current system temperature.
 TEMPERATURE_FILES="
