@@ -253,40 +253,40 @@ do
 
     # Bring all CPUs online and manual frequencies set to 340Mhz - 1000Mhz
     
-    CPU_POLICY_DIR="/sys/devices/system/cpu/cpufreq/policy0"
+  #  CPU_POLICY_DIR="/sys/devices/system/cpu/cpufreq/policy0"
     
-    chmod 644 "${CPU_POLICY_DIR}"/scaling_min_freq
-    write "${CPU_POLICY_DIR}/scaling_min_freq" "$UNIT_MIN"
-    chmod 444 "${CPU_POLICY_DIR}"/scaling_min_freq
+  #  chmod 644 "${CPU_POLICY_DIR}"/scaling_min_freq
+  #  write "${CPU_POLICY_DIR}/scaling_min_freq" "$UNIT_MIN"
+ #   chmod 444 "${CPU_POLICY_DIR}"/scaling_min_freq
 
-    chmod 644 "${CPU_POLICY_DIR}"/scaling_min_freq
-    write "${CPU_POLICY_DIR}/scaling_max_freq" "$UNIT_MAX"
-    chmod 444 "${CPU_POLICY_DIR}"/scaling_min_freq
+  #  chmod 644 "${CPU_POLICY_DIR}"/scaling_min_freq
+  #  write "${CPU_POLICY_DIR}/scaling_max_freq" "$UNIT_MAX"
+#    chmod 444 "${CPU_POLICY_DIR}"/scaling_min_freq
     
-    for CPU in $(ls /sys/devices/system/cpu/ |grep -E '(cpu[0-9])'); do
-        CPU_DIR="/sys/devices/system/cpu/${CPU}"
-        echo "Found cpu: \"${CPU_DIR}\" ..."
-        CPU_STATE_FILE="${CPU_DIR}/hotplug/state"
-        if [ -f "${CPU_STATE_FILE}" ]; then
-                STATE=$(cat "${CPU_STATE_FILE}" | grep 237) # kernel5.14-224 kernel5.15-228 kernel5.17.0-231 kernel5.19-237
-                if [ "${STATE}" == "237" ]; then
-                        echo -e "\t${CPU} already online"
-                else
-                         echo -e "\t${CPU} is new cpu, onlining cpu ..."
-                         echo 237 > "${CPU_STATE_FILE}"
-                fi
-        else 
-                echo -e "\t${CPU} already configured prior to hot-add"
-        fi
+ #   for CPU in $(ls /sys/devices/system/cpu/ |grep -E '(cpu[0-9])'); do
+#        CPU_DIR="/sys/devices/system/cpu/${CPU}"
+ #       echo "Found cpu: \"${CPU_DIR}\" ..."
+ #       CPU_STATE_FILE="${CPU_DIR}/hotplug/state"
+#        if [ -f "${CPU_STATE_FILE}" ]; then
+ #               STATE=$(cat "${CPU_STATE_FILE}" | grep 237) # kernel5.14-224 kernel5.15-228 kernel5.17.0-231 kernel5.19-237
+#                if [ "${STATE}" == "237" ]; then
+#                        echo -e "\t${CPU} already online"
+  #              else
+ #                        echo -e "\t${CPU} is new cpu, onlining cpu ..."
+#                         echo 237 > "${CPU_STATE_FILE}"
+#                fi
+#        else 
+ #               echo -e "\t${CPU} already configured prior to hot-add"
+ #       fi
         
-        chmod 644 "${CPU_DIR}"/cpufreq/scaling_min_freq
-        write "${CPU_DIR}/cpufreq/scaling_min_freq" "$UNIT_MIN"
-        chmod 444 "${CPU_DIR}"/cpufreq/scaling_min_freq
-
-        chmod 644 "${CPU_DIR}"/cpufreq/scaling_min_freq
-        write "${CPU_DIR}/cpufreq/scaling_max_freq" "$UNIT_MAX"
-        chmod 444 "${CPU_DIR}"/cpufreq/scaling_min_freq
-    done
+ #       chmod 644 "${CPU_DIR}"/cpufreq/scaling_min_freq
+#        write "${CPU_DIR}/cpufreq/scaling_min_freq" "$UNIT_MIN"
+ #       chmod 444 "${CPU_DIR}"/cpufreq/scaling_min_freq
+#
+ #       chmod 644 "${CPU_DIR}"/cpufreq/scaling_min_freq
+#        write "${CPU_DIR}/cpufreq/scaling_max_freq" "$UNIT_MAX"
+#        chmod 444 "${CPU_DIR}"/cpufreq/scaling_min_freq
+#    done
 	
 done
 
