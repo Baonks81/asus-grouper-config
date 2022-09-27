@@ -173,7 +173,7 @@ unthrottle
 # Main loop
 while true; do
 	get_temp # Gets the current temperature and set it to the variable TEMP.
-	hotplug_allcpu # Activate all cpu when one of its offline
+	#hotplug_allcpu # Activate all cpu when one of its offline
 	if   [ $TEMP -gt $MAX_TEMP ]; then # Throttle if too hot.
 		throttle
 	elif [ $TEMP -le $LOW_TEMP ]; then # Unthrottle if cool.
