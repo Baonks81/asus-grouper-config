@@ -48,22 +48,22 @@ sync
 write /proc/sys/kernel/perf_cpu_time_max_percent 3
 
 # Execute child process before parent after fork
-write /proc/sys/kernel/sched_child_runs_first 1
+write /proc/sys/kernel/sched_child_runs_first 0
 
 # Preliminary requirement for the following values
-write /sys/kernel/debug/sched/tunable_scaling 0
+write /sys/kernel/debug/sched/tunable_scaling 1
 
 # Reduce the maximum scheduling period for lower latency
-write /sys/kernel/debug/sched/latency_ns "${SCHED_PERIOD}"
+write /sys/kernel/debug/sched/latency_ns 30000000 # "${SCHED_PERIOD}"
 
 # Schedule this ratio of tasks in the guarenteed sched period
-write /sys/kernel/debug/sched/min_granularity_ns "${((SCHED_PERIOD / SCHED_TASKS))}"
+write /sys/kernel/debug/sched/min_granularity_ns 3000000 # "${((SCHED_PERIOD / SCHED_TASKS))}"
 
 # Require preeptive tasks to surpass half of a sched period in vmruntime
-write /sys/kernel/debug/sched/wakeup_granularity_ns "${((SCHED_PERIOD / 2))}"
+write /sys/kernel/debug/sched/wakeup_granularity_ns 6000000 # "${((SCHED_PERIOD / 2))}"
 
 # Reduce the frequency of task migrations
-write /sys/kernel/debug/sched/migration_cost_ns 5000000
+write /sys/kernel/debug/sched/migration_cost_ns 500000
 
 # Improve real time latencies by reducing the scheduler migration time
 write /sys/kernel/debug/sched/nr_migrate 4
@@ -108,7 +108,7 @@ write /proc/sys/net/ipv4/tcp_ecn 1
 # Enable fast socket open for receiver and sender
 write /proc/sys/net/ipv4/tcp_fastopen 3
 
-write /sys/kernel/debug/sched/idle_min_granularity_ns 50000
+write /sys/kernel/debug/sched/idle_min_granularity_ns 300000
 
 write /sys/kernel/debug/sched/domains/cpu0/domain0/min_interval 1
 write /sys/kernel/debug/sched/domains/cpu0/domain0/max_interval 4
