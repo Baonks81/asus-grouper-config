@@ -93,7 +93,7 @@ write /proc/sys/vm/page-cluster 0
 write /proc/sys/vm/stat_interval 1
 
 # Swap to the swap device at a fair rate
-write /proc/sys/vm/swappiness 60
+write /proc/sys/vm/swappiness 40
 
 # Prioritize page cache over simple file structure nodes
 write /proc/sys/vm/vfs_cache_pressure 100
@@ -309,12 +309,14 @@ do
 	# Disable I/O statistics accounting
 	write "${queue}/iostats" 0
 
+	write "${queue}/rotational" 0
+
 	# Reduce heuristic read-ahead in exchange for I/O latency
-	write "${queue}/read_ahead_kb" 32
+	write "${queue}/read_ahead_kb" 0
 	
 	# Reduce the maximum number I/O requests in exchange for latency
 	chmod 644 "${queue}"/nr_requests
-	write "${queue}/nr_requests" 32
+	write "${queue}/nr_requests" 512
 done
 
 #sysctl -p
