@@ -1,0 +1,469 @@
+#!/bin/bash
+
+# Optimize cpu frequencies and kernel parameters
+# Written by Baonks81 (Baonks81 @ Gitlab)
+# GNU GPL License, Version 2.0
+
+# The name of the current branch for logging purposes
+BRANCH="latency"
+
+# Maximum unsigned integer size in C
+UNIT_MAX="1300000"
+
+# Minnimum frequency
+UNIT_MIN="51000"
+
+# Duration in nanoseconds of one scheduling period
+SCHED_PERIOD="30000000"
+
+# How many tasks should we have at a maximum in one scheduling period
+SCHED_TASKS="10"
+
+write() {
+	# Bail out if file does not exist
+	[[ ! -f "$1" ]] && return 1
+
+	# Make file writable in case it is not already
+	chmod +w "$1" 2> /dev/null
+
+	# Write the new value and bail if there's an error
+	if ! echo "$2" > "$1" 2> /dev/null
+	then
+		echo "Failed: $1 → $2"
+		return 1
+	fi
+
+	# Log the success
+	echo "$1 → $2"
+}
+
+# Log the date and time for records sake
+echo "Time of execution: $(date)"
+echo "Branch: $BRANCH"
+
+# Sync to data in the rare case a device crashes
+sync
+
+# Limit max perf event processing time to this much CPU usage
+write /proc/sys/kernel/perf_cpu_time_max_percent 3
+
+# Execute child process before parent after fork
+write /proc/sys/kernel/sched_child_runs_first 0
+
+# Preliminary requirement for the following values
+write /sys/kernel/debug/sched/tunable_scaling 1
+
+# Reduce the maximum scheduling period for lower latency
+write /sys/kernel/debug/sched/latency_ns 30000000
+
+# Schedule this ratio of tasks in the guarenteed sched period
+write /sys/kernel/debug/sched/min_granularity_ns 3000000
+
+# Require preeptive tasks to surpass half of a sched period in vmruntime
+write /sys/kernel/debug/sched/wakeup_granularity_ns 6000000
+
+# Reduce the frequency of task migrations
+write /sys/kernel/debug/sched/migration_cost_ns 500000
+
+# Improve real time latencies by reducing the scheduler migration time
+write /sys/kernel/debug/sched/nr_migrate 4
+
+# Disable scheduler statistics to reduce overhead
+write /proc/sys/kernel/sched_schedstats 0
+
+# Disable unecessary printk logging
+write /proc/sys/kernel/printk_devkmsg off
+
+# Start non-blocking writeback later
+write /proc/sys/vm/dirty_background_ratio 5
+
+# Start blocking writeback later
+write /proc/sys/vm/dirty_ratio 20
+
+# Require dirty memory to stay in memory for longer
+write /proc/sys/vm/dirty_expire_centisecs 200
+
+# Run the dirty memory flusher threads less often
+write /proc/sys/vm/dirty_writeback_centisecs 500
+
+# Disable read-ahead for swap devices
+write /proc/sys/vm/page-cluster 1
+
+# Update /proc/stat less often to reduce jitter
+write /proc/sys/vm/stat_interval 1
+
+# Swap to the swap device at a fair rate
+write /proc/sys/vm/swappiness 40
+
+# Prioritize page cache over simple file structure nodes
+write /proc/sys/vm/vfs_cache_pressure 100
+
+write /proc/sys/vm/laptop_mode 0
+
+#write /proc/sys/vm/drop_caches 3
+
+# Enable Explicit Congestion Control
+write /proc/sys/net/ipv4/tcp_ecn 1
+
+# Enable fast socket open for receiver and sender
+write /proc/sys/net/ipv4/tcp_fastopen 3
+
+write /sys/kernel/debug/sched/idle_min_granularity_ns 300000
+
+write /sys/kernel/debug/sched/domains/cpu0/domain0/min_interval 1
+write /sys/kernel/debug/sched/domains/cpu0/domain0/max_interval 4
+write /sys/kernel/debug/sched/domains/cpu0/domain0/busy_factor 64
+write /sys/kernel/debug/sched/domains/cpu0/domain0/imbalance_pct 125
+write /sys/kernel/debug/sched/domains/cpu0/domain0/cache_nice_tries 1
+write /sys/kernel/debug/sched/domains/cpu1/domain0/min_interval 1
+write /sys/kernel/debug/sched/domains/cpu1/domain0/max_interval 4
+write /sys/kernel/debug/sched/domains/cpu1/domain0/busy_factor 64
+write /sys/kernel/debug/sched/domains/cpu1/domain0/imbalance_pct 125
+write /sys/kernel/debug/sched/domains/cpu1/domain0/cache_nice_tries 1
+write /sys/kernel/debug/sched/domains/cpu2/domain0/min_interval 1
+write /sys/kernel/debug/sched/domains/cpu2/domain0/max_interval 4
+write /sys/kernel/debug/sched/domains/cpu2/domain0/busy_factor 64
+write /sys/kernel/debug/sched/domains/cpu2/domain0/imbalance_pct 125
+write /sys/kernel/debug/sched/domains/cpu2/domain0/cache_nice_tries 1
+write /sys/kernel/debug/sched/domains/cpu3/domain0/min_interval 1
+write /sys/kernel/debug/sched/domains/cpu3/domain0/max_interval 4
+write /sys/kernel/debug/sched/domains/cpu3/domain0/busy_factor 64
+write /sys/kernel/debug/sched/domains/cpu3/domain0/imbalance_pct 125
+write /sys/kernel/debug/sched/domains/cpu3/domain0/cache_nice_tries 1
+
+if [[ -f "/sys/kernel/debug/sched/features" ]]
+then
+	# Consider scheduling tasks that are eager to run
+	write /sys/kernel/debug/sched/features NEXT_BUDDY
+
+	# Some sources report large latency spikes during large migrations
+	write /sys/kernel/debug/sched/features NO_TTWU_QUEUE
+fi
+
+# Loop over each CPU in the system
+for cpu in /sys/devices/system/cpu/cpu*/cpufreq
+do
+	# Fetch the available governors from the CPU
+	avail_govs="$(cat "${cpu}/scaling_available_governors")"
+
+	# Attempt to set the governor in this order
+	for governor in ondemand schedutil intelliactive interactive conservative
+	do
+		# Once a matching governor is found, set it and break for this CPU
+		if [[ "${avail_govs}" == *"${governor}"* ]]
+		then
+			write "${cpu}/scaling_governor" "${governor}"
+			break
+		fi
+	done
+done
+
+# Apply governor specific tunables for schedutil
+find /sys/devices/system/cpu/ -name schedutil -type d | while IFS= read -r governor
+do
+	# Consider changing frequencies once per scheduling period
+	write "${governor}/up_rate_limit_us" 0
+	write "${governor}/down_rate_limit_us" 0
+	write "${governor}/rate_limit_us" 0
+
+	# Jump to hispeed frequency at this load percentage
+	write "${governor}/hispeed_load" 85
+	write "${governor}/hispeed_freq" "$UNIT_MAX"
+done
+
+# Apply governor specific tunables for intelliactive
+find /sys/devices/system/cpu/ -name intelliactive -type d | while IFS= read -r governor
+do
+	# Consider changing frequencies once per scheduling period
+	write "${governor}/above_hispeed_delay" 40000
+	write "${governor}/boost" 0
+	#write "${governor}/boostpluse" 0
+	write "${governor}/boostpluse_duration" 80000
+
+	# Jump to hispeed frequency at this load percentage
+	write "${governor}/go_hispeed_load" 95
+	write "${governor}/hispeed_freq" "$((UNIT_MAX * 10 / 13))"
+	write "${governor}/io_is_busy" 1
+	write "${governor}/min_sample_time" 20000
+	write "${governor}/sampling_down_factor" 20000
+	write "${governor}/sync_freq" 475000
+	write "${governor}/target_loads" 90
+	write "${governor}/timer_rate" 10000
+	write "${governor}/timer_slack" 40000
+	write "${governor}/two_phase_freq" 475000,513000,620000,860000
+	write "${governor}/up_threshold_any_cpu_freq" 8600000
+	write "${governor}/up_threshold_any_cpu_load" 85
+done
+
+# Apply governor specific tunables for interactive
+find /sys/devices/system/cpu/ -name interactive -type d | while IFS= read -r governor
+do
+	# Consider changing frequencies once per scheduling period
+	write "${governor}/above_hispeed_delay" 20000
+	write "${governor}/boost" 0
+	write "${governor}/max_boost" 0
+	write "${governor}/io_is_busy" 0
+	write "${governor}/core_lock_count" 2
+	write "${governor}/core_lock_period" 3000000
+	write "${governor}/timer_rate" 50000
+	write "${governor}/min_sample_time" 500000
+	write "${governor}/boost_factor" 2
+	write "${governor}/input_boost" 1
+	write "${governor}/sustain_load" 80
+
+	# Jump to hispeed frequency at this load percentage
+	write "${governor}/go_hispeed_load" 75
+	write "${governor}/go_maxspeed_load" 85
+	write "${governor}/hispeed_freq" "$UNIT_MAX"
+done
+
+# Apply governor specific tunables for conservative
+find /sys/devices/system/cpu/ -name conservative -type d | while IFS= read -r governor
+do
+	# Consider changing frequencies once per scheduling period
+	write "${governor}/down_threshold" 20
+	write "${governor}/freq_step" 5
+	write "${governor}/ignore_nice_load" 0
+	write "${governor}/sampling_down_factor" 1
+	write "${governor}/sampling_rate" 300000
+	write "${governor}/sampling_rate_min" 200000
+
+	# Jump to hispeed frequency at this load percentage
+	write "${governor}/up_threshold" 80
+done
+
+# Apply governor specific tunables for ondemand
+find /sys/devices/system/cpu/ -name ondemand -type d | while IFS= read -r governor
+do
+	# Consider changing frequencies once per scheduling period
+	write "${governor}/ignore_nice_load" 0
+	write "${governor}/io_is_busy" 0
+	#write "${governor}/optimal_freq" 960000
+	write "${governor}/powersave_bias" 0
+	write "${governor}/sampling_down_factor" 1
+	write "${governor}/sampling_rate" 20000 # 300000
+	#write "${governor}/sampling_rate_min" 30000
+	#write "${governor}/sync_freq" 960000
+
+	# Jump to hispeed frequency at this load percentage
+	write "${governor}/up_threshold" 95
+	
+	# Based on script by William Lam - http://engineering.ucsb.edu/~duonglt/vmware/
+    # Found at http://askubuntu.com/questions/764620/how-do-you-hotplug-enable-new-cpu-and-ram-in-a-virtual-machine
+
+    # Bring all CPUs online and manual frequencies set to 51Mhz - 1300Mhz
+    
+    #CPU_POLICY_DIR="/sys/devices/system/cpu/cpufreq/policy0"
+    
+    #chmod 644 "${CPU_POLICY_DIR}"/scaling_min_freq
+    #write "${CPU_POLICY_DIR}/scaling_min_freq" "$UNIT_MIN"
+    #chmod 444 "${CPU_POLICY_DIR}"/scaling_min_freq
+
+    #chmod 644 "${CPU_POLICY_DIR}"/scaling_min_freq
+    #write "${CPU_POLICY_DIR}/scaling_max_freq" "$UNIT_MAX"
+    #chmod 444 "${CPU_POLICY_DIR}"/scaling_min_freq
+    
+    #for CPU in $(ls /sys/devices/system/cpu/ |grep -E '(cpu[0-9])'); do
+    #    CPU_DIR="/sys/devices/system/cpu/${CPU}"
+    #    echo "Found cpu: \"${CPU_DIR}\" ..."
+    #    CPU_STATE_FILE="${CPU_DIR}/hotplug/state"
+    #    if [ -f "${CPU_STATE_FILE}" ]; then
+    #            STATE=$(cat "${CPU_STATE_FILE}" | grep 237) # kernel5.14-224 kernel5.15.0-228 kernel5.17.0-231 kernel5.19.0-237
+    #            if [ "${STATE}" == "237" ]; then
+    #                    echo -e "\t${CPU} already online"
+    #            else
+    #                     echo -e "\t${CPU} is new cpu, onlining cpu ..."
+    #                     echo 237 > "${CPU_STATE_FILE}"
+    #            fi
+    #    else 
+    #            echo -e "\t${CPU} already configured prior to hot-add"
+    #    fi
+        
+    #    chmod 644 "${CPU_DIR}"/cpufreq/scaling_min_freq
+    #    write "${CPU_DIR}/cpufreq/scaling_min_freq" "$UNIT_MIN"
+    #    chmod 444 "${CPU_DIR}"/cpufreq/scaling_min_freq
+
+    #    chmod 644 "${CPU_DIR}"/cpufreq/scaling_min_freq
+    #    write "${CPU_DIR}/cpufreq/scaling_max_freq" "$UNIT_MAX"
+    #    chmod 444 "${CPU_DIR}"/cpufreq/scaling_min_freq
+    #done
+	
+done
+
+#for queue in /sys/block/*/queue
+#do
+#	# Choose the first governor available
+#	avail_scheds="$(cat "${queue}/scheduler")"
+#	for sched in cfq noop deadline kyber bfq mq-deadline none
+#	do
+#		if [[ "${avail_scheds}" == *"${sched}"* ]]
+#		then
+#			write "${queue}/scheduler" "${sched}"
+#			break
+#		fi
+#	done
+
+	# Do not use I/O as a source of randomness
+#	write "${queue}/add_random" 0
+
+	# Disable I/O statistics accounting
+#	write "${queue}/iostats" 0
+
+#	write "${queue}/rotational" 0
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+#	write "${queue}/read_ahead_kb" 0
+	
+	# Reduce the maximum number I/O requests in exchange for latency
+#	chmod 644 "${queue}"/nr_requests
+#	write "${queue}/nr_requests" 512
+
+#        write "${queue}"/iosched/slice_idle 0 # never idle WITHIN groups
+#        write "${queue}"/iosched/group_idle 10 # BUT make sure there is differentiation between cgroups
+#        write "${queue}"/iosched/back_seek_penalty 1 # no penalty
+#        write "${queue}"/iosched/quantum 16 # default 8. Removes bottleneck
+#        write "${queue}"/iosched/slice_async_rq 4 # default 2. See above
+#        write "${queue}"/iosched/back_seek_max 2147483647 # i.e. the whole disk
+
+#done
+
+if test -e /sys/block/dm-0; then
+  for f in /sys/block/dm-*; do # encrypted filesystems
+
+	# Do not use I/O as a source of randomness
+	write "${f}/add_random" 0
+
+	# Disable I/O statistics accounting
+	write "${f}/iostats" 0
+
+    write "${f}/queue/rq_affinity" 2 # moving cpus is "expensive"
+
+    write "${f}/queue/rotational" 0
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+	write "${f}/read_ahead_kb" 512
+
+	# Reduce the maximum number of I/O requests in exchange for latency
+    chmod 644 "${f}"/nr_requests
+	write "${f}/nr_requests" 128
+  done
+fi
+
+for queue in /sys/block/mmcblk0/queue
+do
+	# Choose the first governor available
+	avail_scheds="$(cat "${queue}/scheduler")"
+	for sched in cfq noop kyber bfq mq-deadline none
+	do
+		if [[ "${avail_scheds}" == *"${sched}"* ]]
+		then
+			write "${queue}/scheduler" "${sched}"
+			break
+		fi
+	done
+
+	# Do not use I/O as a source of randomness
+	write "${queue}/add_random" 0
+
+	# Disable I/O statistics accounting
+	write "${queue}/iostats" 1
+
+	# Move cpus is "expensive"
+	write "${queue}/rq_affinity" 1
+
+	write "${queue}/rotational" 0
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+	write "${queue}/read_ahead_kb" 256
+
+	# Reduce the maximum number of I/O requests in exchange for latency
+    chmod 644 "${queue}"/nr_requests
+	write "${queue}/nr_requests" 256
+
+  write "${queue}"/iosched/slice_idle 0 # never idle WITHIN groups
+  write "${queue}"/iosched/group_idle 0 # BUT make sure there is differentiation between cgroups
+  write "${queue}"/iosched/back_seek_penalty 1 # no penalty
+  write "${queue}"/iosched/quantum 8 # default 8. Removes bottleneck
+  write "${queue}"/iosched/slice_async_rq 2 # default 2. See above
+  write "${queue}"/iosched/back_seek_max 16384 # default 2147483647 i.e. the whole disk
+
+done
+
+for queue in /sys/block/mmcblk0/mmcblk0boot*/queue
+do
+	# Choose the first governor available
+	avail_scheds="$(cat "${queue}/scheduler")"
+	for sched in cfq noop kyber bfq mq-deadline none
+	do
+		if [[ "${avail_scheds}" == *"${sched}"* ]]
+		then
+			write "${queue}/scheduler" "${sched}"
+			break
+		fi
+	done
+
+	# Do not use I/O as a source of randomness
+	write "${queue}/add_random" 0
+
+	# Disable I/O statistics accounting
+	write "${queue}/iostats" 1
+
+	# Move cpus is "expensive"
+	write "${queue}/rq_affinity" 1
+
+	write "${queue}/rotational" 0
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+	write "${queue}/read_ahead_kb" 512
+
+	# Reduce the maximum number of I/O requests in exchange for latency
+  chmod 644 "${queue}"/nr_requests
+	write "${queue}/nr_requests" 128
+
+  write "${queue}"/iosched/slice_idle 10 # never idle WITHIN groups
+  write "${queue}"/iosched/group_idle 0 # BUT make sure there is differentiation between cgroups
+  write "${queue}"/iosched/back_seek_penalty 2 # no penalty
+  write "${queue}"/iosched/quantum 8 # default 8. Removes bottleneck
+  write "${queue}"/iosched/slice_async_rq 2 # default 2. See above
+  write "${queue}"/iosched/back_seek_max 16384 # default 2147483647 i.e. the whole disk
+
+done
+
+for queue in /sys/block/zram*/queue
+do
+	# Choose the first governor available
+	avail_scheds="$(cat "${queue}/scheduler")"
+	for sched in cfq noop kyber bfq mq-deadline none
+	do
+		if [[ "${avail_scheds}" == *"${sched}"* ]]
+		then
+			write "${queue}/scheduler" "${sched}"
+			break
+		fi
+	done
+
+	# Do not use I/O as a source of randomness
+	write "${queue}/add_random" 0
+
+	# Disable I/O statistics accounting
+	write "${queue}/iostats" 0
+
+	# Move cpus is "expensive"
+	write "${queue}/rq_affinity" 0
+
+	write "${queue}/rotational" 0
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+	write "${queue}/read_ahead_kb" 512
+
+	# Reduce the maximum number of I/O requests in exchange for latency
+  chmod 644 "${queue}"/nr_requests
+	write "${queue}/nr_requests" 128
+
+done
+
+systemctl restart systemd-sysctl.service
+systemctl restart systemd-modules-load.service
+
+# Always return success, even if the last write fails
+exit 0
