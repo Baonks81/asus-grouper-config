@@ -14,7 +14,7 @@ UNIT_MAX="1300000"
 UNIT_MIN="51000"
 
 # Duration in nanoseconds of one scheduling period
-SCHED_PERIOD="30000000"
+SCHED_PERIOD="10000000"
 
 # How many tasks should we have at a maximum in one scheduling period
 SCHED_TASKS="10"
@@ -51,22 +51,22 @@ write /proc/sys/kernel/perf_cpu_time_max_percent 3
 write /proc/sys/kernel/sched_child_runs_first 0
 
 # Preliminary requirement for the following values
-write /sys/kernel/debug/sched/tunable_scaling 1
+write /sys/kernel/debug/sched/tunable_scaling 0
 
 # Reduce the maximum scheduling period for lower latency
-write /sys/kernel/debug/sched/latency_ns 30000000
+write /sys/kernel/debug/sched/latency_ns 10000000
 
 # Schedule this ratio of tasks in the guarenteed sched period
-write /sys/kernel/debug/sched/min_granularity_ns 3000000
+write /sys/kernel/debug/sched/min_granularity_ns 2250000
 
 # Require preeptive tasks to surpass half of a sched period in vmruntime
-write /sys/kernel/debug/sched/wakeup_granularity_ns 6000000
+write /sys/kernel/debug/sched/wakeup_granularity_ns 2000000
 
 # Reduce the frequency of task migrations
 write /sys/kernel/debug/sched/migration_cost_ns 500000
 
 # Improve real time latencies by reducing the scheduler migration time
-write /sys/kernel/debug/sched/nr_migrate 4
+write /sys/kernel/debug/sched/nr_migrate 32
 
 # Disable scheduler statistics to reduce overhead
 write /proc/sys/kernel/sched_schedstats 0
@@ -78,13 +78,13 @@ write /proc/sys/kernel/printk_devkmsg off
 write /proc/sys/vm/dirty_background_ratio 5
 
 # Start blocking writeback later
-write /proc/sys/vm/dirty_ratio 20
+write /proc/sys/vm/dirty_ratio 15
 
 # Require dirty memory to stay in memory for longer
 write /proc/sys/vm/dirty_expire_centisecs 200
 
 # Run the dirty memory flusher threads less often
-write /proc/sys/vm/dirty_writeback_centisecs 500
+write /proc/sys/vm/dirty_writeback_centisecs 400
 
 # Disable read-ahead for swap devices
 write /proc/sys/vm/page-cluster 1
@@ -93,7 +93,7 @@ write /proc/sys/vm/page-cluster 1
 write /proc/sys/vm/stat_interval 1
 
 # Swap to the swap device at a fair rate
-write /proc/sys/vm/swappiness 40
+write /proc/sys/vm/swappiness 60
 
 # Prioritize page cache over simple file structure nodes
 write /proc/sys/vm/vfs_cache_pressure 100
