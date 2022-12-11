@@ -33,6 +33,8 @@ freemem_after=$(cat /proc/meminfo | grep MemFree | tr -s ' ' | cut -d ' ' -f2) &
 # Output Summary
 echo -e "This freed $(echo "$freemem_after - $freemem_before" | bc) MiB, so now you have $freemem_after MiB of free RAM."
 
+sleep 300
+
 done
 
 #exit 0
