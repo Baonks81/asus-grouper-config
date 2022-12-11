@@ -1,0 +1,248 @@
+#!/bin/bash
+##
+## Francesco Potortì 2022
+## Licensed under GNU GPL 3 or any later version
+##
+## Usage: tempthrottle-pot [<TMAX>] [<TMIN>] [<TDEV>] [verbose]
+##
+## Defaults are sane, can be called without arguments by root as a daemon
+##
+## This program runs on Linux. It polls the current max scaling frequency and the current temperature
+## and adjusts the max scaling frequency to keep the temperature between TMIN and TMAX (in Celsius).
+## Adjustments are gradual by steps.
+##
+## Usually systems are tuned so that this daemon is not necessary.  However, there are special
+## situation when one needs to keep the CPU cool enough and this daemon comes in handy.
+##
+## This program was inspired from the code of tempthrottle by Sepero 2016
+## The main improvement is that the frequency is varied gradually from high to low bounds as the
+## temperature varies from low to high bounds, rather than quickly being increased or decreased
+## and staying too long at maximum and minimum speed.  Setting TMIN equal to TMAX emulates Sepero's
+## program behaviour.
+## Other improvements include better logging and error checking.
+##
+## Examples:
+##
+## tempthrottle-pot
+##   without arguments, the program tries to keep the temperature in the interval
+##   from 55° to 80° by looking for a frequency which keeps the temperature stable
+##
+## tempthrottle-pot 75
+##   same as above, in the interval from 50° to 75°
+##
+## tempthrottle-pot 85 70
+##   same as above, in the interval from 70° to 85°
+##
+## tempthrottle-pot 77 77
+##   same as above, in the interval from 74° to 80° due to a builtin hysteresis of 3°;
+##   setting tmin and tmax equal triggers a special case where the frequency steps are
+##   set to be at 100 kHz distance if possible, as in the original program by Sepero.
+##
+## tempthrottle-pot '' '' /sys/class/hwmon/hwmon0/temp1_input
+##   Use default values for the temperature, force usage of a specific temperature device
+##
+## tempthrottle-pot '' '' '' verbose
+##   Use default values and log all frequency changes to syslog
+
+trap 'log "Temperature $(roundk $temp)°, max scaling frequency $(roundk $cur_fmax) kHz.  Killed: exiting"'  EXIT
+
+log () {
+    logger --tag "${0##*/}" --id=$$ --stderr "$*"
+}
+
+err () {
+    log "Error: $*"
+    exit 1
+}
+
+check_bounds () {
+    local -i val="$1" min="$2" max="$3"
+    if ((val < min || val > max)); then
+	shift 3
+	err "$* $val out of bounds [$min..$max]"
+    fi
+}
+
+################################################################
+## Set some basic constants and variables
+
+declare -i mintemp=30	# low bound for temperature values in Celsius
+declare -i maxtemp=56	# high bound for temperature values in Celsius
+declare -i mintstep=8	# min size for the teperature step in Celsius
+declare -i cycle=3	# the polling cycle in seconds
+
+## Read arguments
+declare -i tmax="${1:-56}"	# tmax is first arg
+check_bounds $tmax $((mintemp + 5)) $maxtemp "tmax"
+
+((tmindefault = tmax-25 < mintemp ? mintemp : tmax-25))
+declare -i tmin="${2:-$tmindefault}" # tmin is second arg
+#((tmin > tmax)) && err "tmax must be not less than tmin, while $tmin > $tmax"
+check_bounds $tmin $mintemp $tmax "tmin"
+
+tdev="${3}"			# temperature file name
+
+if [ "$4" = verbose ]; then ((verbose = 1)); else ((verbose = 0)); fi
+
+cores=$(nproc)			# number of CPU cores
+
+FREQ_FILE="/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies"
+FREQ_MIN="/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq"
+FREQ_MAX="/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"
+
+# Possible locations for reading the current system temperature
+TEMPERATURE_FILES="
+/sys/class/thermal/thermal_zone2/temp
+/sys/class/hwmon/hwmon+([0-9])/temp+([0-9])_input
+/sys/class/hwmon/hwmon+([0-9])/device/temp+([0-9])_input
+null
+"
+shopt -s extglob
+
+################################################################
+## Define functions
+
+about_equal ()
+{
+    local -i a="$1"
+    local -i b="$2"
+    local -i s="${3:-1}"
+    return $((a-b > s || a-b < -s))
+}
+
+roundk ()
+{
+    local -i a
+    while (($# > 0)); do
+	a="$1"
+	echo -n $(((a+500)/1000))
+	(($# > 1)) && echo -n " "
+	shift
+    done
+}
+
+set_scaling_max_freq ()
+{
+    local -i scaling_max_freq="$1"
+    ((scaling_max_freq == 0)) && err "Internal error"
+    log "Temp is $(roundk $temp)°: changing max scaling frequency from $(roundk $cur_fmax) to $(roundk $scaling_max_freq) kHz"
+    for ((i = 0; i < cores; i++)); do
+	# Try to set core frequency by writing to /sys/devices.
+	echo $scaling_max_freq 2> /dev/null > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_max_freq ||
+	    # Else, try to set core frequency using command cpufreq-set.
+	    cpufreq-set -c $i --max $scaling_max_freq > /dev/null ||
+	    # Else, return error message.
+	    err "Failed to set frequency CPU core$i. Run script as Root user. Some systems may require to install the package cpufrequtils."
+    done
+	#echo -n "current freqs " 
+	#$scaling_max_freq
+}
+
+get_temp ()
+{
+    local -i t=$(< $tdev)
+    ((t == 0)) &&  err "Cannot read temperature from $tdev"
+    echo $t
+}
+
+get_scaling_max_freq ()
+{
+    local -i maxcpuf=0
+    for ((i = 0; i < cores; i++)); do
+	cpuf=$(< /sys/devices/system/cpu/cpu$i/cpufreq/scaling_max_freq)
+	((cpuf == 0)) &&  err "Cannot read max frequency for CPU #$i "
+	if ((cpuf > maxcpuf)); then ((maxcpuf = cpuf)); fi
+    done
+    echo $maxcpuf
+}
+
+################################################################
+## Setup the frequency and temperature ladders by choosing the number of steps
+
+declare -i fmin fmax
+declare -ai flist tlist
+if [ -r $FREQ_FILE ]; then
+    read -a flist < $FREQ_FILE ||
+	err "Cannot read available cpu frequencies from file $FREQ_FILE"
+    ((steps = ${#flist[*]}))
+
+elif [ -r $FREQ_MIN -a -r $FREQ_MAX ]; then
+    fmax="$(< $FREQ_MAX)"
+    ((fmax == 0)) && err "Cannot read max cpu frequency"
+    fmin="$(< $FREQ_MIN)"
+    ((fmin == 0)) && err "Cannot read min cpu frequency"
+    if ((tmin == tmax)); then	# special case
+	## Sepero compatibility mode: lots of small steps
+	((fstep = 100000))
+	((steps = (fmax-fmin)/fstep + 1))
+    else			# normal case
+	## Normal mode: few big steps
+	((steps = (tmax-tmin)/mintstep + 1))
+	((steps = (steps < 2) ? 2 : steps))
+	((fstep = (fmax-fmin)/(steps-1)))
+	((fstep == 0)) && err "Bad max and min cpu frequencies"
+    fi
+    for ((f=fmax, s=0; s<steps; f-=fstep, s+=1)); do
+	((flist[s] = f))
+    done
+
+else
+    err "Cannot read max and min cpu frequencies"
+fi
+
+declare -i tstep thist
+#((mintstep = 3))
+((tmax *= 1000))
+((tmin *= 1000))
+((tstep = (tmax-tmin)/(steps-2)))
+#((tstep < mintstep*1000)) && err "max and min temperatures $(roundk $tmin) degrees and $(roundk $tmax) degrees must be at least $((mintstep*(steps-2))) degrees apart"
+((thist = (maxt-mint)/(steps-2)/5))
+((thist = thist > 3*1000 ? thist : 3*1000))
+for ((t=tmin, s=1; s<steps; t+=tstep, s+=1)); do
+    ((tlist[s] = t))
+done
+
+declare -i temp
+if [ "$tdev" = "" ]; then
+    for tdev in $TEMPERATURE_FILES notfound; do
+	if [ ! -r "$tdev" ]; then continue; fi
+	temp="$(get_temp)"
+	if ((temp > mintemp*1000 && temp < maxtemp*1000)); then break; fi
+    done
+fi
+[ "$tdev" = notfound ] && err "Cannot find where to read temperature."
+
+declare -i cur_fmax=$(get_scaling_max_freq)
+for ((cur_step = steps-1; cur_step > 0; cur_step -= 1)); do
+    if about_equal $cur_fmax ${flist[cur_step]} || ((cur_fmax < flist[cur_step])); then
+	break;
+    fi
+done
+temp=$(get_temp)
+
+################################################################
+## The main loop reads the temperature avery cycle seconds
+
+if ((verbose)); then verbose_desc="verbose"; else verbose_desc="quiet"; fi
+log "Max scaling frequencies $(roundk ${flist[*]}) kHz, cycle ${cycle}s"
+log "Temperature thresholds $(roundk ${tlist[*]}) degrees, hysteresis $(roundk thist) degrees"
+log "Reading temperature from $tdev, $verbose_desc"
+log "Temperature $(roundk $temp) degrees, max scaling frequency $(roundk $cur_fmax) kHz"
+
+while true; do
+    # echo $temp, $cur_step, $steps, $((tlist[cur_step])), $thist, $((flist[cur_step]))
+    if ((cur_step > 0 && temp < tlist[cur_step] - thist)); then
+	((cur_step -=1))
+    elif ((cur_step < steps-1 && temp > tlist[cur_step+1] + thist)); then
+	((cur_step +=1))
+    fi
+    
+    if ! about_equal $cur_fmax $((flist[cur_step])); then
+	((verbose)) && set_scaling_max_freq $((flist[cur_step]))
+	((cur_fmax = flist[cur_step]))
+    fi
+
+    sleep $cycle
+    temp=$(get_temp)
+    cur_fmax=$(get_scaling_max_freq)
+done
