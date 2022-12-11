@@ -3,6 +3,8 @@
 ## By Philipp Klaus
 ## see <http://blog.philippklaus.de/2011/02/clear-cached-memory-on-ubuntu/>
 
+while true; do
+
 if [ "$(whoami)" != "root" ]
 then
   echo "You have to run this script as Superuser!"
@@ -31,4 +33,6 @@ freemem_after=$(cat /proc/meminfo | grep MemFree | tr -s ' ' | cut -d ' ' -f2) &
 # Output Summary
 echo -e "This freed $(echo "$freemem_after - $freemem_before" | bc) MiB, so now you have $freemem_after MiB of free RAM."
 
-exit 0
+done
+
+#exit 0
