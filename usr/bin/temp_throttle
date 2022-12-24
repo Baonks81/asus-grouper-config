@@ -39,7 +39,7 @@ fi
 ### START Initialize Global variables.
 
 # The frequency will increase when low temperature is reached.
-LOW_TEMP=$((MAX_TEMP - 3))
+LOW_TEMP=$((MAX_TEMP - 5))
 
 CORES=$(nproc) # Get number of CPU cores.
 echo -e "Number of CPU cores detected: $CORES\n"
@@ -104,6 +104,7 @@ done
 #/sys/class/hwmon/hwmon2/device/temp1_input
 #null
 #"
+
 # Store the first temperature location that exists in the variable TEMP_FILE.
 # The location stored in $TEMP_FILE will be used for temperature readings.
 for file in $TEMPERATURE_FILES; do
