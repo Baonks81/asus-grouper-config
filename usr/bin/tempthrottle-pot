@@ -67,12 +67,12 @@ check_bounds () {
 ## Set some basic constants and variables
 
 declare -i mintemp=30	# low bound for temperature values in Celsius
-declare -i maxtemp=56	# high bound for temperature values in Celsius
+declare -i maxtemp=59	# high bound for temperature values in Celsius
 declare -i mintstep=8	# min size for the teperature step in Celsius
 declare -i cycle=3	# the polling cycle in seconds
 
 ## Read arguments
-declare -i tmax="${1:-56}"	# tmax is first arg
+declare -i tmax="${1:-59}"	# tmax is first arg
 check_bounds $tmax $((mintemp + 5)) $maxtemp "tmax"
 
 ((tmindefault = tmax-25 < mintemp ? mintemp : tmax-25))
@@ -91,12 +91,33 @@ FREQ_MIN="/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq"
 FREQ_MAX="/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"
 
 # Possible locations for reading the current system temperature
-TEMPERATURE_FILES="
-/sys/class/thermal/thermal_zone2/temp
-/sys/class/hwmon/hwmon+([0-9])/temp+([0-9])_input
-/sys/class/hwmon/hwmon+([0-9])/device/temp+([0-9])_input
-null
-"
+#TEMPERATURE_FILES="
+#/sys/class/thermal/thermal_zone2/temp
+#/sys/class/hwmon/hwmon+([0-9])/temp+([0-9])_input
+#/sys/class/hwmon/hwmon+([0-9])/device/temp+([0-9])_input
+#null
+#"
+
+for THERMAL in $(ls /sys/class/thermal/ | grep -E '(thermal_zone[0-9])')
+do
+	THERMAL_DIR="/sys/class/thermal/${THERMAL}"
+	echo "Found thermal_zone: \"${THERMAL_DIR}\" ..."
+	THERMAL_TYPE_FILE="${THERMAL_DIR}/type"
+	if [ -f "${THERMAL_TYPE_FILE}" ]; then
+		TYPE=$(cat "${THERMAL_TYPE_FILE}" | grep 'cpu-thermal')
+		if [ "${TYPE}" == "cpu-thermal" ]; then
+			TEMP="${THERMAL_DIR}/temp"
+                        echo -e "\tFound CPU thermal, temperature $(cat "${TEMP}") degrees"
+			TEMPERATURE_FILES="
+			${TEMP}
+			null
+			"
+                else
+			echo -e "\tThermal is not found"
+		fi
+	fi
+done
+
 shopt -s extglob
 
 ################################################################
