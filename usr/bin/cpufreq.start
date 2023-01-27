@@ -98,6 +98,9 @@ write /proc/sys/vm/swappiness 133
 # Prioritize page cache over simple file structure nodes
 write /proc/sys/vm/vfs_cache_pressure 200
 
+# Disable auto suspend usb core bluetooth
+write /sys/module/usbcore/parameters/autosuspend -1
+
 write /proc/sys/vm/laptop_mode 0
 
 write /proc/sys/vm/drop_caches 3
