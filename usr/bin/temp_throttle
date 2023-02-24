@@ -67,13 +67,13 @@ fi
 FREQ_LIST_LEN=$(echo $FREQ_LIST | wc -w)
 
 # CURRENT_FREQ will save the index of the currently used frequency in FREQ_LIST.
-CURRENT_FREQ=2
+CURRENT_FREQ=4
 
 # This is a list of possible locations to read the current system temperature.
 for THERMAL in $(ls /sys/class/thermal/ | grep -E '(thermal_zone[0-9])')
 do
 	THERMAL_DIR="/sys/class/thermal/${THERMAL}"
-	echo "Found cpu: \"${THERMAL_DIR}\" ..."
+	echo "Found thermal-zone: \"${THERMAL_DIR}\" ..."
 	THERMAL_TYPE_FILE="${THERMAL_DIR}/type"
 	if [ -f "${THERMAL_TYPE_FILE}" ]; then
 		TYPE=$(cat "${THERMAL_TYPE_FILE}" | grep 'cpu-thermal')
