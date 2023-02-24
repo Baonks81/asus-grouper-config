@@ -6,8 +6,8 @@ After=syslog.target network-online.target
 
 [Service]
 Type=simple
-#ExecStart=temp_throttle 59
-ExecStart=tempthrottle-pot 59 49
+ExecStart=temp_throttle 48
+#ExecStart=tempthrottle-pot 59 49
 Restart=on-failure
 RestartSec=10
 KillMode=process
