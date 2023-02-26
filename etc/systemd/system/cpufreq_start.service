@@ -2,10 +2,11 @@
 Description=CPUfreqs_Start
 
 Wants=network.target
-After=syslog.target network-online.target
+After=syslog.target network-online.target temp_throttle.service
 
 [Service]
 Type=simple
+ExecStartPre=/bin/sleep 5
 ExecStart=cpufreq.start
 Restart=on-failure
 RestartSec=10
