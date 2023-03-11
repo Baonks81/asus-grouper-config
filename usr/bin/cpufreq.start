@@ -75,16 +75,16 @@ write /proc/sys/kernel/sched_schedstats 0
 write /proc/sys/kernel/printk_devkmsg off
 
 # Start non-blocking writeback later
-write /proc/sys/vm/dirty_background_ratio 5
+write /proc/sys/vm/dirty_background_ratio 0 # 5
 
 # Start blocking writeback later
-write /proc/sys/vm/dirty_ratio 15
+write /proc/sys/vm/dirty_ratio 0 # 15
 
 # Require dirty memory to stay in memory for longer
 write /proc/sys/vm/dirty_expire_centisecs 200
 
 # Run the dirty memory flusher threads less often
-write /proc/sys/vm/dirty_writeback_centisecs 400
+write /proc/sys/vm/dirty_writeback_centisecs 500 # 400
 
 # Disable read-ahead for swap devices
 write /proc/sys/vm/page-cluster 1
@@ -93,17 +93,22 @@ write /proc/sys/vm/page-cluster 1
 write /proc/sys/vm/stat_interval 1
 
 # Swap to the swap device at a fair rate
-write /proc/sys/vm/swappiness 133
+write /proc/sys/vm/swappiness 150
 
 # Prioritize page cache over simple file structure nodes
-write /proc/sys/vm/vfs_cache_pressure 200
+write /proc/sys/vm/vfs_cache_pressure 100
 
-# Disable auto suspend usb core bluetooth
-write /sys/module/usbcore/parameters/autosuspend -1
+# allow LMK to free more ram
+write /proc/sys/vm/highmem_is_dirtyable 0
 
+# Disable battery saver when read_ahead_kb 512kb
 write /proc/sys/vm/laptop_mode 0
 
-write /proc/sys/vm/drop_caches 3
+# Not usually clear cache
+write /proc/sys/vm/drop_caches 0
+
+# Disable auto suspend usb
+write /sys/module/usbcore/parameters/autosuspend -1
 
 # Enable Explicit Congestion Control
 write /proc/sys/net/ipv4/tcp_ecn 1
@@ -150,7 +155,7 @@ do
 	avail_govs="$(cat "${cpu}/scaling_available_governors")"
 
 	# Attempt to set the governor in this order
-	for governor in ondemand schedutil intelliactive interactive conservative
+	for governor in ondemand intelliactive interactive conservative
 	do
 		# Once a matching governor is found, set it and break for this CPU
 		if [[ "${avail_govs}" == *"${governor}"* ]]
@@ -159,19 +164,6 @@ do
 			break
 		fi
 	done
-done
-
-# Apply governor specific tunables for schedutil
-find /sys/devices/system/cpu/ -name schedutil -type d | while IFS= read -r governor
-do
-	# Consider changing frequencies once per scheduling period
-	write "${governor}/up_rate_limit_us" 0
-	write "${governor}/down_rate_limit_us" 0
-	write "${governor}/rate_limit_us" 0
-
-	# Jump to hispeed frequency at this load percentage
-	write "${governor}/hispeed_load" 85
-	write "${governor}/hispeed_freq" "$UNIT_MAX"
 done
 
 # Apply governor specific tunables for intelliactive
@@ -245,38 +237,170 @@ do
 	write "${governor}/powersave_bias" 0
 	write "${governor}/sampling_down_factor" 1
 	write "${governor}/sampling_rate" 20000 # 300000
-	#write "${governor}/sampling_rate_min" 30000
-	#write "${governor}/sync_freq" 960000
 
 	# Jump to hispeed frequency at this load percentage
 	write "${governor}/up_threshold" 95
-        
-        write /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq 1000000
-        write /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 640000
 
+    # Set max and min frequency policy0
+    write /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq 1100000
+    write /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 640000
+	
 done
 
 if test -e /sys/block/dm-0; then
-  for f in /sys/block/dm-*; do # encrypted filesystems
+  for queue in /sys/block/dm-*/queue; do # encrypted filesystems
 
 	# Do not use I/O as a source of randomness
-	write "${f}/add_random" 0
+    chmod 777 "${queue}"/add_random
+	write "${queue}/add_random" 0
+
+    chmod 777 "${queue}"/discard_granularity
+	write "${queue}/discard_granularity" 0
+
+    chmod 777 "${queue}"/discard_max_bytes
+	write "${queue}/discard_max_bytes" 0
+
+    chmod 777 "${queue}"/discard_zeroes_data
+	write "${queue}/discard_zeroes_data" 0
+
+    chmod 777 "${queue}"/hw_sector_size
+	write "${queue}/hw_sector_size" 512
 
 	# Disable I/O statistics accounting
-	write "${f}/iostats" 0
+    chmod 777 "${queue}"/iostats
+	write "${queue}/iostats" 0
 
-    write "${f}/queue/rq_affinity" 1 # moving cpus is "expensive"
+    chmod 777 "${queue}"/logical_block_size
+	write "${queue}/logical_block_size" 512
 
-    write "${f}/queue/rotational" 0
+    chmod 777 "${queue}"/max_hw_sectors_kb
+	write "${queue}/max_hw_sectors_kb" 127 # 0
 
-	# Reduce heuristic read-ahead in exchange for I/O latency
-	write "${f}/read_ahead_kb" 512
+    chmod 777 "${queue}"/max_integrity_segments
+	write "${queue}/max_integrity_segments" 0
+
+    chmod 777 "${queue}"/max_sectors_kb
+	write "${queue}/max_sectors_kb" 127 # 0
+
+    chmod 777 "${queue}"/max_segment_size
+	write "${queue}/max_segment_size" 65536 # 4096
+
+    chmod 777 "${queue}"/max_segments
+	write "${queue}/max_segments" 128 # 0
+
+    chmod 777 "${queue}"/minimum_io_size
+	write "${queue}/minimum_io_size" 512 # 0
+
+    chmod 777 "${queue}"/nomerges
+	write "${queue}/nomerges" 0
 
 	# Reduce the maximum number of I/O requests in exchange for latency
-    chmod 644 "${f}"/nr_requests
-	write "${f}/nr_requests" 128
+    chmod 777 "${queue}"/nr_requests
+	write "${queue}/nr_requests" 128
+
+    chmod 777 "${queue}"/optimal_io_size
+	write "${queue}/optimal_io_size" 0
+
+    chmod 777 "${queue}"/physical_block_size
+	write "${queue}/physical_block_size" 512 # 0
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+    chmod 777 "${queue}"/read_ahead_kb
+	write "${queue}/read_ahead_kb" 128
+
+    chmod 777 "${queue}"/rotational
+	write "${queue}/rotational" 1
+
+	# Move cpus is "expensive"
+    chmod 777 "${queue}"/rq_affinity
+	write "${queue}/rq_affinity" 0
+
+	#write "${queue}/scheduler" [none]
+
   done
 fi
+
+for queue in /sys/block/loop*/queue
+do
+	# Choose the first governor available
+	avail_scheds="$(cat "${queue}/scheduler")"
+	for sched in noop row [cfq] zen kyber bfq mq-deadline none
+	do
+		if [[ "${avail_scheds}" == *"${sched}"* ]]
+		then
+			write "${queue}/scheduler" "${sched}"
+			break
+		fi
+	done
+
+	# Do not use I/O as a source of randomness
+    chmod 777 "${queue}"/add_random
+	write "${queue}/add_random" 0
+
+    chmod 777 "${queue}"/discard_granularity
+	write "${queue}/discard_granularity" 0
+
+    chmod 777 "${queue}"/discard_max_bytes
+	write "${queue}/discard_max_bytes" 0
+
+    chmod 777 "${queue}"/discard_zeroes_data
+	write "${queue}/discard_zeroes_data" 0
+
+    chmod 777 "${queue}"/hw_sector_size
+	write "${queue}/hw_sector_size" 512
+
+	# Disable I/O statistics accounting
+    chmod 777 "${queue}"/iostats
+	write "${queue}/iostats" 0
+
+    chmod 777 "${queue}"/logical_block_size
+	write "${queue}/logical_block_size" 512
+
+    chmod 777 "${queue}"/max_hw_sectors_kb
+	write "${queue}/max_hw_sectors_kb" 127 # 0
+
+    chmod 777 "${queue}"/max_integrity_segments
+	write "${queue}/max_integrity_segments" 0
+
+    chmod 777 "${queue}"/max_sectors_kb
+	write "${queue}/max_sectors_kb" 127 # 0
+
+    chmod 777 "${queue}"/max_segment_size
+	write "${queue}/max_segment_size" 65536 # 4096
+
+    chmod 777 "${queue}"/max_segments
+	write "${queue}/max_segments" 128 # 0
+
+    chmod 777 "${queue}"/minimum_io_size
+	write "${queue}/minimum_io_size" 512 # 0
+
+    chmod 777 "${queue}"/nomerges
+	write "${queue}/nomerges" 0
+
+	# Reduce the maximum number of I/O requests in exchange for latency
+    chmod 777 "${queue}"/nr_requests
+	write "${queue}/nr_requests" 128
+
+    chmod 777 "${queue}"/optimal_io_size
+	write "${queue}/optimal_io_size" 0
+
+    chmod 777 "${queue}"/physical_block_size
+	write "${queue}/physical_block_size" 512 # 0
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+    chmod 777 "${queue}"/read_ahead_kb
+	write "${queue}/read_ahead_kb" 128
+
+    chmod 777 "${queue}"/rotational
+	write "${queue}/rotational" 1
+
+	# Move cpus is "expensive"
+    chmod 777 "${queue}"/rq_affinity
+	write "${queue}/rq_affinity" 0
+
+	#write "${queue}/scheduler" [none] kyber
+
+done
 
 for queue in /sys/block/mmcblk0/queue
 do
@@ -292,29 +416,78 @@ do
 	done
 
 	# Do not use I/O as a source of randomness
-	write "${queue}/add_random" 0
+    chmod 777 "${queue}"/add_random
+	write "${queue}/add_random" 1
+
+    chmod 777 "${queue}"/discard_granularity
+	write "${queue}/discard_granularity" 4194304
+
+    chmod 777 "${queue}"/discard_max_bytes
+	write "${queue}/discard_max_bytes" 2199023255040
+
+    chmod 777 "${queue}"/discard_zeroes_data
+	write "${queue}/discard_zeroes_data" 0
+
+    chmod 777 "${queue}"/hw_sector_size
+	write "${queue}/hw_sector_size" 512
 
 	# Disable I/O statistics accounting
+    chmod 777 "${queue}"/iostats
 	write "${queue}/iostats" 1
 
-	# Move cpus is "expensive"
-	write "${queue}/rq_affinity" 1
+    chmod 777 "${queue}"/logical_block_size
+	write "${queue}/logical_block_size" 512
 
-	write "${queue}/rotational" 0
+    chmod 777 "${queue}"/max_hw_sectors_kb
+	write "${queue}/max_hw_sectors_kb" 32767
 
-	# Reduce heuristic read-ahead in exchange for I/O latency
-	write "${queue}/read_ahead_kb" 256
+    chmod 777 "${queue}"/max_integrity_segments
+	write "${queue}/max_integrity_segments" 0
+
+    chmod 777 "${queue}"/max_sectors_kb
+	write "${queue}/max_sectors_kb" 512
+
+    chmod 777 "${queue}"/max_segment_size
+	write "${queue}/max_segment_size" 65535
+
+    chmod 777 "${queue}"/max_segments
+	write "${queue}/max_segments" 512
+
+    chmod 777 "${queue}"/minimum_io_size
+	write "${queue}/minimum_io_size" 512
+
+    chmod 777 "${queue}"/nomerges
+	write "${queue}/nomerges" 0
 
 	# Reduce the maximum number of I/O requests in exchange for latency
-    chmod 644 "${queue}"/nr_requests
-	write "${queue}/nr_requests" 256
+    chmod 777 "${queue}"/nr_requests
+	write "${queue}/nr_requests" 128
 
-  write "${queue}"/iosched/slice_idle 0 # never idle WITHIN groups
-  write "${queue}"/iosched/group_idle 0 # BUT make sure there is differentiation between cgroups
-  write "${queue}"/iosched/back_seek_penalty 1 # no penalty
-  write "${queue}"/iosched/quantum 8 # default 8. Removes bottleneck
-  write "${queue}"/iosched/slice_async_rq 2 # default 2. See above
-  write "${queue}"/iosched/back_seek_max 16384 # default 2147483647 i.e. the whole disk
+    chmod 777 "${queue}"/optimal_io_size
+	write "${queue}/optimal_io_size" 0
+
+    chmod 777 "${queue}"/physical_block_size
+	write "${queue}/physical_block_size" 512
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+    chmod 777 "${queue}"/read_ahead_kb
+	write "${queue}/read_ahead_kb" 128
+
+    chmod 777 "${queue}"/rotational
+	write "${queue}/rotational" 0
+
+	# Move cpus is "expensive"
+    chmod 777 "${queue}"/rq_affinity
+	write "${queue}/rq_affinity" 1
+
+	#write "${queue}/scheduler" "[kyber] none"
+
+    write "${queue}"/iosched/slice_idle 0 # never idle WITHIN groups
+    write "${queue}"/iosched/group_idle 0 # BUT make sure there is differentiation between cgroups
+    write "${queue}"/iosched/back_seek_penalty 1 # no penalty
+    write "${queue}"/iosched/quantum 8 # default 8. Removes bottleneck
+    write "${queue}"/iosched/slice_async_rq 2 # default 2. See above
+    write "${queue}"/iosched/back_seek_max 16384 # default 2147483647 i.e. the whole disk
 
 done
 
@@ -332,29 +505,78 @@ do
 	done
 
 	# Do not use I/O as a source of randomness
-	write "${queue}/add_random" 0
+    chmod 777 "${queue}"/add_random
+	write "${queue}/add_random" 1
+
+    chmod 777 "${queue}"/discard_granularity
+	write "${queue}/discard_granularity" 4194304
+
+    chmod 777 "${queue}"/discard_max_bytes
+	write "${queue}/discard_max_bytes" 2199023255040
+
+    chmod 777 "${queue}"/discard_zeroes_data
+	write "${queue}/discard_zeroes_data" 0
+
+   chmod 777 "${queue}"/hw_sector_size
+	write "${queue}/hw_sector_size" 512
 
 	# Disable I/O statistics accounting
+    chmod 777 "${queue}"/iostats
 	write "${queue}/iostats" 1
 
-	# Move cpus is "expensive"
-	write "${queue}/rq_affinity" 1
+    chmod 777 "${queue}"/logical_block_size
+	write "${queue}/logical_block_size" 512
 
-	write "${queue}/rotational" 0
+    chmod 777 "${queue}"/max_hw_sectors_kb
+	write "${queue}/max_hw_sectors_kb" 32767
 
-	# Reduce heuristic read-ahead in exchange for I/O latency
-	write "${queue}/read_ahead_kb" 512
+    chmod 777 "${queue}"/max_integrity_segments
+	write "${queue}/max_integrity_segments" 0
+
+    chmod 777 "${queue}"/max_sectors_kb
+	write "${queue}/max_sectors_kb" 512
+
+    chmod 777 "${queue}"/max_segment_size
+	write "${queue}/max_segment_size" 65535
+
+    chmod 777 "${queue}"/max_segments
+	write "${queue}/max_segments" 512
+
+    chmod 777 "${queue}"/minimum_io_size
+	write "${queue}/minimum_io_size" 512
+
+    chmod 777 "${queue}"/nomerges
+	write "${queue}/nomerges" 0
 
 	# Reduce the maximum number of I/O requests in exchange for latency
-  chmod 644 "${queue}"/nr_requests
+    chmod 777 "${queue}"/nr_requests
 	write "${queue}/nr_requests" 128
 
-  write "${queue}"/iosched/slice_idle 10 # never idle WITHIN groups
-  write "${queue}"/iosched/group_idle 0 # BUT make sure there is differentiation between cgroups
-  write "${queue}"/iosched/back_seek_penalty 2 # no penalty
-  write "${queue}"/iosched/quantum 8 # default 8. Removes bottleneck
-  write "${queue}"/iosched/slice_async_rq 2 # default 2. See above
-  write "${queue}"/iosched/back_seek_max 16384 # default 2147483647 i.e. the whole disk
+    chmod 777 "${queue}"/optimal_io_size
+	write "${queue}/optimal_io_size" 0
+
+    chmod 777 "${queue}"/physical_block_size
+	write "${queue}/physical_block_size" 512
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+    chmod 777 "${queue}"/read_ahead_kb
+	write "${queue}/read_ahead_kb" 128
+
+    chmod 777 "${queue}"/rotational
+	write "${queue}/rotational" 0
+
+	# Move cpus is "expensive"
+    chmod 777 "${queue}"/rq_affinity
+	write "${queue}/rq_affinity" 1
+
+	#write "${queue}/scheduler" "[kyber] none"
+
+    write "${queue}"/iosched/slice_idle 10 # never idle WITHIN groups
+    write "${queue}"/iosched/group_idle 0 # BUT make sure there is differentiation between cgroups
+    write "${queue}"/iosched/back_seek_penalty 2 # no penalty
+    write "${queue}"/iosched/quantum 8 # default 8. Removes bottleneck
+    write "${queue}"/iosched/slice_async_rq 2 # default 2. See above
+    write "${queue}"/iosched/back_seek_max 16384 # default 2147483647 i.e. the whole disk
 
 done
 
@@ -372,22 +594,71 @@ do
 	done
 
 	# Do not use I/O as a source of randomness
+    chmod 777 "${queue}"/add_random
 	write "${queue}/add_random" 0
 
+    chmod 777 "${queue}"/discard_granularity
+	write "${queue}/discard_granularity" 0
+
+    chmod 777 "${queue}"/discard_max_bytes
+	write "${queue}/discard_max_bytes" 0
+
+    chmod 777 "${queue}"/discard_zeroes_data
+	write "${queue}/discard_zeroes_data" 0 # 1
+
+    chmod 777 "${queue}"/hw_sector_size
+	write "${queue}/hw_sector_size" 4096
+
 	# Disable I/O statistics accounting
+    chmod 777 "${queue}"/iostats
 	write "${queue}/iostats" 0
 
-	# Move cpus is "expensive"
-	write "${queue}/rq_affinity" 0
+    chmod 777 "${queue}"/logical_block_size
+	write "${queue}/logical_block_size" 4096
 
-	write "${queue}/rotational" 0
+    chmod 777 "${queue}"/max_hw_sectors_kb
+	write "${queue}/max_hw_sectors_kb" 127
 
-	# Reduce heuristic read-ahead in exchange for I/O latency
-	write "${queue}/read_ahead_kb" 512
+    chmod 777 "${queue}"/max_integrity_segments
+	write "${queue}/max_integrity_segments" 0
+
+    chmod 777 "${queue}"/max_sectors_kb
+	write "${queue}/max_sectors_kb" 127
+
+    chmod 777 "${queue}"/max_segment_size
+	write "${queue}/max_segment_size" 65536
+
+    chmod 777 "${queue}"/max_segments
+	write "${queue}/max_segments" 128
+
+    chmod 777 "${queue}"/minimum_io_size
+	write "${queue}/minimum_io_size" 4096
+
+    chmod 777 "${queue}"/nomerges
+	write "${queue}/nomerges" 0
 
 	# Reduce the maximum number of I/O requests in exchange for latency
-  chmod 644 "${queue}"/nr_requests
+    chmod 777 "${queue}"/nr_requests
 	write "${queue}/nr_requests" 128
+
+    chmod 777 "${queue}"/optimal_io_size
+	write "${queue}/optimal_io_size" 4096
+
+    chmod 777 "${queue}"/physical_block_size
+	write "${queue}/physical_block_size" 4096
+
+	# Reduce heuristic read-ahead in exchange for I/O latency
+    chmod 777 "${queue}"/read_ahead_kb
+	write "${queue}/read_ahead_kb" 128
+
+    chmod 777 "${queue}"/rotational
+	write "${queue}/rotational" 1
+
+	# Move cpus is "expensive"
+    chmod 777 "${queue}"/rq_affinity
+	write "${queue}/rq_affinity" 0
+
+	#write "${queue}/scheduler" none
 
 done
 
