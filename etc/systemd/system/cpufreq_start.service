@@ -2,7 +2,7 @@
 Description=CPUfreqs_Start
 
 Wants=network.target
-After=syslog.target network-online.target temp_throttle.service
+After=syslog.target network-online.target temp_throttle.service tlp.service
 
 [Service]
 Type=simple
