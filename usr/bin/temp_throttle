@@ -39,7 +39,7 @@ fi
 ### START Initialize Global variables.
 
 # The frequency will increase when low temperature is reached.
-LOW_TEMP=$((MAX_TEMP - 5))
+LOW_TEMP=$((MAX_TEMP - 3))
 
 CORES=$(nproc) # Get number of CPU cores.
 echo -e "Number of CPU cores detected: $CORES\n"
@@ -49,9 +49,13 @@ CORES=$((CORES - 1)) # Subtract 1 from $CORES for easier counting later.
 MAX_TEMP=${MAX_TEMP}000
 LOW_TEMP=${LOW_TEMP}000
 
-FREQ_FILE="/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies"
-FREQ_MIN="/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq"
-FREQ_MAX="/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"
+FREQ_FILE="~/scaling_available_frequencies"
+FREQ_MIN="~/cpuinfo_min_freq"
+FREQ_MAX="~/cpuinfo_max_freq"
+
+#FREQ_FILE="/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies"
+#FREQ_MIN="/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq"
+#FREQ_MAX="/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"
 
 # Store available cpu frequencies in a space separated string FREQ_LIST.
 if [ -f $FREQ_FILE ]; then
