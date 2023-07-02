@@ -6,7 +6,9 @@ This is some service scripts for asus-grouper/tilapia rev.E1565(Nexus 7 2012) wh
 3. /usr/bin/temp_throttle - github.com/sepero/temp-throttle
    
    /usr/bin/cpuinfo_max_freq
+   
    /usr/bin/cpuinfo_min_freq
+   
    /usr/bin/scaling_available_frequencies
 
 Create deb package for asus grouper/tilapia on GNU/Linux distros using systemd
