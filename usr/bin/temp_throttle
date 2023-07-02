@@ -39,7 +39,7 @@ fi
 ### START Initialize Global variables.
 
 # The frequency will increase when low temperature is reached.
-LOW_TEMP=$((MAX_TEMP - 3))
+LOW_TEMP=$((MAX_TEMP - 5))
 
 CORES=$(nproc) # Get number of CPU cores.
 echo -e "Number of CPU cores detected: $CORES\n"
