@@ -75,16 +75,16 @@ write /proc/sys/kernel/sched_schedstats 0
 write /proc/sys/kernel/printk_devkmsg off
 
 # Start non-blocking writeback later
-write /proc/sys/vm/dirty_background_ratio 0 # 5
+write /proc/sys/vm/dirty_background_ratio 5
 
 # Start blocking writeback later
-write /proc/sys/vm/dirty_ratio 0 # 15
+write /proc/sys/vm/dirty_ratio 15
 
 # Require dirty memory to stay in memory for longer
 write /proc/sys/vm/dirty_expire_centisecs 200
 
 # Run the dirty memory flusher threads less often
-write /proc/sys/vm/dirty_writeback_centisecs 500 # 400
+write /proc/sys/vm/dirty_writeback_centisecs 400
 
 # Disable read-ahead for swap devices
 write /proc/sys/vm/page-cluster 0
