@@ -2,7 +2,7 @@
 
 This is some service scripts for asus-grouper/tilapia rev.E1565(Nexus 7 2012) which getting from Android LineageOS config to mainline kernel (upstream)
 1. /etc/sysctl.d/10-nexus7.conf - LineageOS
-2. /usr/bin/cpufreq.start - ktweak on Android Oneplus6
+2. /usr/bin/cpufreq.start - ktweak on Android Oneplus6 - tytydraco
 3. /usr/bin/clear_ram - askubuntu.com or stackoverflow.com
 4. /usr/bin/temp_throttle - github.com/sepero/temp-throttle
    
