@@ -5,11 +5,11 @@ Wants=network.target
 After=syslog.target network-online.target temp_throttle.service tlp.service
 
 [Service]
-Type=simple
+Type=idle
 ExecStartPre=/bin/sleep 5
 ExecStart=cpufreq.start
 Restart=on-failure
-RestartSec=10
+#RestartSec=10
 KillMode=process
 
 [Install]
