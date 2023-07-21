@@ -49,9 +49,9 @@ CORES=$((CORES - 1)) # Subtract 1 from $CORES for easier counting later.
 MAX_TEMP=${MAX_TEMP}000
 LOW_TEMP=${LOW_TEMP}000
 
-FREQ_FILE="/home/lewin/scaling_available_frequencies"
-FREQ_MIN="/home/lewin/cpuinfo_min_freq"
-FREQ_MAX="/home/lewin/cpuinfo_max_freq"
+FREQ_FILE="/usr/bin/scaling_available_frequencies"
+FREQ_MIN="/usr/bin/cpuinfo_min_freq"
+FREQ_MAX="/usr/bin/cpuinfo_max_freq"
 
 #FREQ_FILE="/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies"
 #FREQ_MIN="/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq"
@@ -163,6 +163,8 @@ set_freq () {
 	for i in $(seq 0 $CORES); do
 		# Try to set core frequency by writing to /sys/devices.
 		{ echo $FREQ_TO_SET 2> /dev/null > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_max_freq; } ||
+		# Try to set core frequency by writing to /sys/devices.
+		{ echo $FREQ_TO_SET 2> /dev/null > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq; } ||
 		# Else, try to set core frequency using command cpufreq-set.
 		{ cpufreq-set -c $i --max $FREQ_TO_SET > /dev/null; } ||
 		# Else, return error message.
