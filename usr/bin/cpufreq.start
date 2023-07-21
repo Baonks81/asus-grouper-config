@@ -244,11 +244,11 @@ do
     # Set max and min frequency policy0
     chmod 0777 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
     write /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 340000
-    chmod 0444 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
+    #chmod 0444 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
     
     chmod 0777 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
-    write /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 760000
-    chmod 0444 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
+    write /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 1100000
+    #chmod 0444 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
 
 done
 
