@@ -301,7 +301,7 @@ if test -e /sys/block/dm-0; then
 
 	# Reduce the maximum number of I/O requests in exchange for latency
     chmod 0777 "${queue}"/nr_requests
-	write "${queue}/nr_requests" 128
+	write "${queue}/nr_requests" 64
 
     chmod 0777 "${queue}"/optimal_io_size
 	write "${queue}/optimal_io_size" 0
@@ -311,7 +311,7 @@ if test -e /sys/block/dm-0; then
 
 	# Reduce heuristic read-ahead in exchange for I/O latency
     chmod 0777 "${queue}"/read_ahead_kb
-	write "${queue}/read_ahead_kb" 256
+	write "${queue}/read_ahead_kb" 128
 
     chmod 0777 "${queue}"/rotational
 	write "${queue}/rotational" 2
@@ -384,7 +384,7 @@ do
 
 	# Reduce the maximum number of I/O requests in exchange for latency
     chmod 0777 "${queue}"/nr_requests
-	write "${queue}/nr_requests" 128
+	write "${queue}/nr_requests" 64
 
     chmod 0777 "${queue}"/optimal_io_size
 	write "${queue}/optimal_io_size" 0
@@ -394,7 +394,7 @@ do
 
 	# Reduce heuristic read-ahead in exchange for I/O latency
     chmod 0777 "${queue}"/read_ahead_kb
-	write "${queue}/read_ahead_kb" 256
+	write "${queue}/read_ahead_kb" 128
 
     chmod 0777 "${queue}"/rotational
 	write "${queue}/rotational" 1
@@ -466,7 +466,7 @@ do
 
 	# Reduce the maximum number of I/O requests in exchange for latency
     chmod 0777 "${queue}"/nr_requests
-	write "${queue}/nr_requests" 128
+	write "${queue}/nr_requests" 64
 
     chmod 0777 "${queue}"/optimal_io_size
 	write "${queue}/optimal_io_size" 0
@@ -476,7 +476,7 @@ do
 
 	# Reduce heuristic read-ahead in exchange for I/O latency
     chmod 0777 "${queue}"/read_ahead_kb
-	write "${queue}/read_ahead_kb" 256
+	write "${queue}/read_ahead_kb" 128
 
     chmod 0777 "${queue}"/rotational
 	write "${queue}/rotational" 0
@@ -555,7 +555,7 @@ do
 
 	# Reduce the maximum number of I/O requests in exchange for latency
     chmod 0777 "${queue}"/nr_requests
-	write "${queue}/nr_requests" 128
+	write "${queue}/nr_requests" 64
 
     chmod 0777 "${queue}"/optimal_io_size
 	write "${queue}/optimal_io_size" 0
@@ -565,7 +565,7 @@ do
 
 	# Reduce heuristic read-ahead in exchange for I/O latency
     chmod 0777 "${queue}"/read_ahead_kb
-	write "${queue}/read_ahead_kb" 256
+	write "${queue}/read_ahead_kb" 128
 
     chmod 0777 "${queue}"/rotational
 	write "${queue}/rotational" 0
@@ -644,7 +644,7 @@ do
 
 	# Reduce the maximum number of I/O requests in exchange for latency
     chmod 0777 "${queue}"/nr_requests
-	write "${queue}/nr_requests" 128
+	write "${queue}/nr_requests" 64
 
     chmod 0777 "${queue}"/optimal_io_size
 	write "${queue}/optimal_io_size" 4096
@@ -654,7 +654,7 @@ do
 
 	# Reduce heuristic read-ahead in exchange for I/O latency
     chmod 0777 "${queue}"/read_ahead_kb
-	write "${queue}/read_ahead_kb" 256
+	write "${queue}/read_ahead_kb" 128
 
     chmod 0777 "${queue}"/rotational
 	write "${queue}/rotational" 1
