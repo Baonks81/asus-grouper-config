@@ -105,7 +105,7 @@ write /proc/sys/vm/highmem_is_dirtyable 0
 write /proc/sys/vm/laptop_mode 0
 
 # Not usually clear cache
-write /proc/sys/vm/drop_caches 0
+write /proc/sys/vm/drop_caches 3
 
 # Disable auto suspend usb
 write /sys/module/usbcore/parameters/autosuspend -1
@@ -167,7 +167,7 @@ do
 done
 
 # Apply governor specific tunables for intelliactive
-find /sys/devices/system/cpu/ -name intelliactive -type d | while IFS= read -r governor
+find /sys/devices/system/cpu/cpufreq/ -name intelliactive -type d | while IFS= read -r governor
 do
 	# Consider changing frequencies once per scheduling period
 	write "${governor}/above_hispeed_delay" 40000
@@ -191,7 +191,7 @@ do
 done
 
 # Apply governor specific tunables for interactive
-find /sys/devices/system/cpu/ -name interactive -type d | while IFS= read -r governor
+find /sys/devices/system/cpu/cpufreq/ -name interactive -type d | while IFS= read -r governor
 do
 	# Consider changing frequencies once per scheduling period
 	write "${governor}/above_hispeed_delay" 20000
@@ -213,7 +213,7 @@ do
 done
 
 # Apply governor specific tunables for conservative
-find /sys/devices/system/cpu/ -name conservative -type d | while IFS= read -r governor
+find /sys/devices/system/cpu/cpufreq/ -name conservative -type d | while IFS= read -r governor
 do
 	# Consider changing frequencies once per scheduling period
 	write "${governor}/down_threshold" 20
@@ -228,26 +228,26 @@ do
 done
 
 # Apply governor specific tunables for ondemand
-find /sys/devices/system/cpu/ -name ondemand -type d | while IFS= read -r governor
+find /sys/devices/system/cpu/cpufreq/ -name ondemand -type d | while IFS= read -r governor
 do
 	# Consider changing frequencies once per scheduling period
 	write "${governor}/ignore_nice_load" 0
 	write "${governor}/io_is_busy" 0
-	#write "${governor}/optimal_freq" 960000
+	#write "${governor}/optimal_freq" 1000000
 	write "${governor}/powersave_bias" 0
 	write "${governor}/sampling_down_factor" 1
 	write "${governor}/sampling_rate" 20000 # 300000
 
 	# Jump to hispeed frequency at this load percentage
-	write "${governor}/up_threshold" 75 #95
+	write "${governor}/up_threshold" 75
 
     # Set max and min frequency policy0
-    chmod 0777 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
-    write /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 340000
-    #chmod 0444 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
+    #chmod 0777 /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq
+    #write /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 1300000
+    #chmod 0444 /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq
     
     chmod 0777 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
-    write /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 1100000
+    write /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 340000
     #chmod 0444 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
 
 done
@@ -314,7 +314,7 @@ if test -e /sys/block/dm-0; then
 	write "${queue}/read_ahead_kb" 128
 
     chmod 0777 "${queue}"/rotational
-	write "${queue}/rotational" 2
+	write "${queue}/rotational" 1
 	
 	# Move cpus is "expensive"
     chmod 0777 "${queue}"/rq_affinity
@@ -384,7 +384,7 @@ do
 
 	# Reduce the maximum number of I/O requests in exchange for latency
     chmod 0777 "${queue}"/nr_requests
-	write "${queue}/nr_requests" 64
+	write "${queue}/nr_requests" 0
 
     chmod 0777 "${queue}"/optimal_io_size
 	write "${queue}/optimal_io_size" 0
@@ -422,7 +422,7 @@ do
 
 	# Do not use I/O as a source of randomness
     chmod 0777 "${queue}"/add_random
-	write "${queue}/add_random" 1
+	write "${queue}/add_random" 0
 
     chmod 0777 "${queue}"/discard_granularity
 	write "${queue}/discard_granularity" 4194304
@@ -466,7 +466,7 @@ do
 
 	# Reduce the maximum number of I/O requests in exchange for latency
     chmod 0777 "${queue}"/nr_requests
-	write "${queue}/nr_requests" 64
+	write "${queue}/nr_requests" 128
 
     chmod 0777 "${queue}"/optimal_io_size
 	write "${queue}/optimal_io_size" 0
@@ -511,7 +511,7 @@ do
 
 	# Do not use I/O as a source of randomness
     chmod 0777 "${queue}"/add_random
-	write "${queue}/add_random" 1
+	write "${queue}/add_random" 0
 
     chmod 0777 "${queue}"/discard_granularity
 	write "${queue}/discard_granularity" 4194304
@@ -657,7 +657,7 @@ do
 	write "${queue}/read_ahead_kb" 128
 
     chmod 0777 "${queue}"/rotational
-	write "${queue}/rotational" 1
+	write "${queue}/rotational" 0
 
 	# Move cpus is "expensive"
     chmod 0777 "${queue}"/rq_affinity
