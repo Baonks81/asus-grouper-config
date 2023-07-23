@@ -167,7 +167,7 @@ do
 done
 
 # Apply governor specific tunables for intelliactive
-find /sys/devices/system/cpu/cpufreq/ -name intelliactive -type d | while IFS= read -r governor
+find /sys/devices/system/cpu/ -name intelliactive -type d | while IFS= read -r governor
 do
 	# Consider changing frequencies once per scheduling period
 	write "${governor}/above_hispeed_delay" 40000
@@ -191,7 +191,7 @@ do
 done
 
 # Apply governor specific tunables for interactive
-find /sys/devices/system/cpu/cpufreq/ -name interactive -type d | while IFS= read -r governor
+find /sys/devices/system/cpu/ -name interactive -type d | while IFS= read -r governor
 do
 	# Consider changing frequencies once per scheduling period
 	write "${governor}/above_hispeed_delay" 20000
@@ -213,7 +213,7 @@ do
 done
 
 # Apply governor specific tunables for conservative
-find /sys/devices/system/cpu/cpufreq/ -name conservative -type d | while IFS= read -r governor
+find /sys/devices/system/cpu/ -name conservative -type d | while IFS= read -r governor
 do
 	# Consider changing frequencies once per scheduling period
 	write "${governor}/down_threshold" 20
