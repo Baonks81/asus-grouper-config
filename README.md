@@ -21,7 +21,7 @@ Create deb package for asus grouper/tilapia on GNU/Linux distros using systemd
 
 Build .deb package:
 
-$ git clone https://github.com/baonks81/asu-grouper-config
+$ git clone https://github.com/baonks81/asus-grouper-config
 
 $ cd asus-grouper-config
 
