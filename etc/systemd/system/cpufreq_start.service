@@ -5,7 +5,7 @@ Wants=network.target
 After=syslog.target network-online.target temp_throttle.service tlp.service
 
 [Service]
-Type=idle
+Type=simple
 ExecStartPre=/bin/sleep 5
 ExecStart=cpufreq.start
 Restart=on-failure
