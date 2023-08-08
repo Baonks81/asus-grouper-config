@@ -87,7 +87,7 @@ write /proc/sys/vm/dirty_expire_centisecs 200
 write /proc/sys/vm/dirty_writeback_centisecs 400
 
 # Disable read-ahead for swap devices
-write /proc/sys/vm/page-cluster 0
+write /proc/sys/vm/page-cluster 1
 
 # Update /proc/stat less often to reduce jitter
 write /proc/sys/vm/stat_interval 1
