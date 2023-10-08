@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 
 systemctl stop clear_ram.service
 systemctl stop cpustart_start.service
