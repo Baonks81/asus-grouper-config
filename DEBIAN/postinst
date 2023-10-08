@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 
 chmod +x /usr/bin/clear_ram
 chmod +x /usr/bin/cpufreq.start
